@@ -70,6 +70,7 @@ falada; ao fechar a frase, entram traduzidas.
 | Comando | O que faz |
 | --- | --- |
 | `node scripts/host-smoke.mjs` | Testa o contrato do protocolo (ping + áudio sintético) |
+| `node scripts/host-smoke.mjs --envelope` | Idem, no formato de envelope `{module, type}` |
 | `node scripts/host-smoke.mjs --wav fala.wav` | Testa transcrição real (WAV mono 16 kHz s16le) |
 | `node scripts/host-smoke.mjs --wav fala.wav --target en-US` | Idem, sem tradução |
 | `cd extension && npm run build` | Gera `extension/dist/` |
@@ -85,12 +86,16 @@ say -o fala.wav --data-format=LEI16@16000 "Hello, welcome back to the channel."
 ### Protocolo extensão ↔ host
 
 Frames de Native Messaging (4 bytes de tamanho LE + JSON). Tipos definidos em
-`extension/src/protocol.ts` (fonte única) e implementados em
-`host/Sources/GbmlHost/HostRuntime.swift`:
+`extension/src/protocol.ts` (fonte única, barrel de `protocol/*`) e implementados
+no host pelo roteador `HostRuntime.swift` + `Modules/*` (docs/twoddd.md).
 
-- extensão → host: `ping`, `start {sourceLanguage, targetLanguage}`,
+Toda mensagem carrega o envelope `{module, type, requestId?}`; o host mantém
+fallback flat por conexão (compatibilidade com clientes antigos):
+
+- `core`: `ping` → `pong {hostVersion, modules}`
+- `translator` (ext → host): `start {sourceLanguage?, targetLanguage}`,
   `audio {pcm: base64 Int16 16kHz mono}`, `stop`, `translation-status`
-- host → extensão: `pong`, `started`, `status`, `partial {text}`,
+- `translator` (host → ext): `started`, `status`, `partial {text}`,
   `final {text, translated?}`, `stopped {bytesReceived, secondsReceived}`,
   `translation-status {status}`, `error`
 

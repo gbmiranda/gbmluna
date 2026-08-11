@@ -1,0 +1,630 @@
+/* Luna — CSS do shell (docs/design-system.md).
+   Identidade: 8-bit minimalista — canto quase vivo, borda 1px, sombra sólida
+   deslocada (nunca blur). Cor SOMENTE via tokens --t-* (setados em runtime por
+   theme/apply.ts); nenhum hex neste arquivo. Estrutura fixa via --ds-*. */
+
+/* ---------------------------------------------------------------- tokens */
+
+:root {
+  /* estrutura (--ds-*): a identidade que sobrevive a qualquer tema */
+  --ds-unit: 8px;
+  --ds-radius: 2px;
+  --ds-e1: 2px 2px 0 var(--t-shadow);
+  --ds-e2: 4px 4px 0 var(--t-shadow);
+  --ds-e-1: inset 1px 1px 0 var(--t-shadow);
+  --ds-snap: 120ms steps(3);
+  --ds-glide: 260ms cubic-bezier(0.2, 0, 0, 1);
+
+  /* tipografia (§2.3): nativa para UI, mono para dado; sem fonte externa */
+  --fonte-ui: -apple-system, system-ui, sans-serif;
+  --fonte-mono: ui-monospace, "SF Mono", monospace;
+}
+
+/* Movimento zero com reduced-motion: todos os transition/animation deste
+   arquivo usam os tokens de motion, então zerá-los basta (sem !important). */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ds-snap: 0ms;
+    --ds-glide: 0ms;
+  }
+}
+
+/* ----------------------------------------------------------- reset mínimo */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font: 400 13px/1.4 var(--fonte-ui);
+  background: var(--t-bg-canvas);
+  color: var(--t-fg);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+img,
+svg,
+canvas,
+iframe {
+  display: block;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Foco visível sempre (--ds-focus) — nunca suprimido, só substituído. */
+:focus-visible {
+  outline: 2px solid var(--t-accent);
+  outline-offset: 2px;
+}
+
+/* Texto só para leitores de tela (anúncios do HUD etc.). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* pixel art nítida SÓ em assets pixel (nunca em texto/UI) */
+.pixel {
+  image-rendering: pixelated;
+}
+
+/* ---------------------------------------------------------------- camadas */
+
+/* Firmamento: painel OLED atrás de tudo; nunca captura input. */
+#firmamento {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Plano navegável: pan por arrasto (grab), zoom na engine. */
+#viewport {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+}
+
+#viewport.is-arrastando {
+  cursor: grabbing;
+}
+
+/* Um único transform composto (translate3d+scale) — GPU, compositor-only. */
+#mundo {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+#hud {
+  position: fixed;
+  bottom: calc(var(--ds-unit) * 2);
+  left: calc(var(--ds-unit) * 2);
+  z-index: 40;
+}
+
+#palco-raiz {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none; /* o .palco religa; vazio não bloqueia o Plano */
+}
+
+#farol-raiz {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+}
+
+#toast-raiz {
+  position: fixed;
+  top: calc(var(--ds-unit) * 2);
+  right: calc(var(--ds-unit) * 2);
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-unit);
+  align-items: flex-end;
+}
+
+/* --------------------------------------------------------- cartão de site */
+
+.cartao {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-unit);
+  width: 320px;
+  height: 200px;
+  padding: calc(var(--ds-unit) * 2);
+  background: var(--t-bg-surface);
+  border: 1px solid var(--t-border);
+  border-radius: var(--ds-radius);
+  box-shadow: var(--ds-e1);
+  /* brilho por Radar: opacity = 0.45 + 0.55·R (twoddd.md, z1) */
+  opacity: calc(0.45 + 0.55 * var(--radar, 1));
+  transition: border-color var(--ds-snap);
+}
+
+.cartao:hover {
+  border-color: var(--t-moon);
+}
+
+.cartao.is-selecionado {
+  outline: 2px solid var(--t-accent);
+  outline-offset: 2px;
+}
+
+.cartao-cabeca {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.cartao-favicon {
+  width: 24px;
+  height: 24px;
+  color: var(--t-moon); /* fallback pixel (estrela) quando sem favicon */
+}
+
+/* ícone de âncora: só aparece em tiles ancorados (posição manual) */
+.cartao-ancora {
+  display: none;
+  color: var(--t-moon);
+}
+
+.cartao.is-ancorado .cartao-ancora {
+  display: block;
+}
+
+.cartao-titulo {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.cartao-dominio {
+  margin-top: auto;
+  overflow: hidden;
+  font: 400 12px var(--fonte-mono);
+  color: var(--t-fg-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------- tile de módulo */
+
+.tile-modulo {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  width: 320px;
+  height: 400px;
+  background: var(--t-bg-surface);
+  border: 1px solid var(--t-border);
+  border-radius: var(--ds-radius);
+  box-shadow: var(--ds-e1);
+}
+
+.tile-modulo-cabecalho {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--ds-unit);
+  height: 40px;
+  padding: 0 calc(var(--ds-unit) * 2);
+  border-bottom: 1px solid var(--t-border);
+}
+
+.tile-modulo-icone {
+  color: var(--t-moon);
+}
+
+.tile-modulo-titulo {
+  flex: 1;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tile-modulo-corpo {
+  flex: 1;
+  padding: calc(var(--ds-unit) * 2);
+  overflow: auto;
+}
+
+/* ------------------------------------------------------------------ lugar */
+
+/* Borda de Lugar: região nomeada do Plano — moldura, não superfície. */
+.lugar {
+  position: absolute;
+  pointer-events: none;
+  border: 1px dashed color-mix(in srgb, var(--t-moon) 40%, transparent);
+  border-radius: var(--ds-radius);
+}
+
+.lugar-nome {
+  position: absolute;
+  top: var(--ds-unit);
+  left: var(--ds-unit);
+  font: 400 12px var(--fonte-mono);
+  color: var(--t-fg-muted);
+}
+
+/* ------------------------------------------------------------------ palco */
+
+/* Overlay fixo FORA do Plano (nunca iframe escalado — twoddd.md). */
+.palco {
+  position: fixed;
+  inset: calc(var(--ds-unit) * 3);
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  background: var(--t-bg-raised);
+  border: 1px solid var(--t-moon);
+  border-radius: var(--ds-radius);
+  box-shadow: var(--ds-e2);
+}
+
+.palco-header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--ds-unit);
+  height: 40px;
+  padding: 0 calc(var(--ds-unit) * 2);
+  border-bottom: 1px solid var(--t-border);
+}
+
+.palco-titulo {
+  max-width: 40%;
+  overflow: hidden;
+  font-size: 20px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.palco-url {
+  flex: 1;
+  overflow: hidden;
+  font: 400 12px var(--fonte-mono);
+  color: var(--t-fg-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.palco-acoes {
+  display: flex;
+  flex: none;
+  gap: var(--ds-unit);
+  margin-left: auto;
+}
+
+/* iframe do site embutido */
+.palco-quadro {
+  flex: 1;
+  width: 100%;
+  background: var(--t-bg-surface);
+  border: 0;
+}
+
+/* fallback honesto quando o site não embute (embedMode tab-only) */
+.palco-bloqueado {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: calc(var(--ds-unit) * 2);
+  align-items: center;
+  justify-content: center;
+  color: var(--t-fg-muted);
+  text-align: center;
+}
+
+/* ------------------------------------------------------------------ farol */
+
+.farol-veu {
+  position: fixed;
+  inset: 0;
+  pointer-events: auto;
+  background: color-mix(in srgb, var(--t-shadow) 40%, transparent);
+}
+
+.farol {
+  position: fixed;
+  top: 16vh;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  width: 560px;
+  max-width: calc(100vw - var(--ds-unit) * 4);
+  pointer-events: auto;
+  background: var(--t-bg-raised);
+  border: 1px solid var(--t-moon);
+  border-radius: var(--ds-radius);
+  box-shadow: var(--ds-e2);
+  transform: translateX(-50%);
+}
+
+.farol-entrada {
+  margin: calc(var(--ds-unit) * 2);
+  padding: var(--ds-unit) calc(var(--ds-unit) * 1.5);
+  font: 400 13px var(--fonte-mono);
+  background: var(--t-bg-canvas);
+  border: 1px solid var(--t-border);
+  border-radius: var(--ds-radius);
+  box-shadow: var(--ds-e-1); /* poço */
+}
+
+.farol-entrada::placeholder {
+  color: var(--t-fg-muted);
+}
+
+.farol-lista {
+  max-height: 45vh;
+  padding-bottom: var(--ds-unit);
+  overflow-y: auto;
+}
+
+.farol-resultado {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-unit);
+  padding: var(--ds-unit) calc(var(--ds-unit) * 2);
+  cursor: pointer;
+}
+
+.farol-resultado.is-ativo {
+  background: var(--t-sel-bg);
+}
+
+.farol-titulo {
+  flex: none;
+  overflow: hidden;
+  max-width: 60%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* chars casados da busca fuzzy */
+.farol-titulo mark {
+  color: var(--t-accent);
+  background: none;
+}
+
+.farol-detalhe {
+  flex: 1;
+  overflow: hidden;
+  font: 400 12px var(--fonte-mono);
+  color: var(--t-fg-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.farol-atalho {
+  flex: none;
+  margin-left: auto;
+  font: 400 11px var(--fonte-mono);
+  color: var(--t-fg-muted);
+}
+
+.farol-vazio {
+  padding: calc(var(--ds-unit) * 2);
+  color: var(--t-fg-muted);
+  text-align: center;
+}
+
+/* -------------------------------------------------------------------- hud */
+
+.hud {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--ds-unit) * 1.5);
+  padding: var(--ds-unit) calc(var(--ds-unit) * 1.5);
+  font: 400 11px var(--fonte-mono);
+  color: var(--t-fg-muted);
+  background: var(--t-bg-raised);
+  border: 1px solid var(--t-border);
+  border-radius: var(--ds-radius);
+  box-shadow: var(--ds-e1);
+}
+
+.hud-wordmark {
+  color: var(--t-fg);
+}
+
+.hud-lua {
+  color: var(--t-moon);
+}
+
+.hud-zoom {
+  min-width: 4ch;
+  text-align: right;
+}
+
+.hud .botao-fantasma {
+  padding: calc(var(--ds-unit) / 2) var(--ds-unit);
+  font: 600 11px var(--fonte-mono);
+}
+
+/* ------------------------------------------------------------------ botões */
+
+/* Botão primário: brasa sólida; :active desloca 2px anulando a sombra
+   (o "afunda" físico do 8-bit). */
+.botao {
+  padding: var(--ds-unit) calc(var(--ds-unit) * 2);
+  font: 600 13px/1 var(--fonte-ui);
+  color: var(--t-accent-fg);
+  cursor: pointer;
+  background: var(--t-accent);
+  border: 1px solid var(--t-border);
+  border-radius: var(--ds-radius);
+  box-shadow: var(--ds-e1);
+  transition:
+    transform var(--ds-snap),
+    box-shadow var(--ds-snap),
+    border-color var(--ds-snap);
+}
+
+.botao:active {
+  box-shadow: none;
+  transform: translate(2px, 2px);
+}
+
+.botao:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.botao-fantasma {
+  color: var(--t-fg);
+  background: transparent;
+  box-shadow: none;
+}
+
+.botao-fantasma:hover {
+  border-color: var(--t-moon);
+}
+
+.botao-fantasma:active {
+  transform: translate(2px, 2px);
+}
+
+.botao-perigo {
+  color: var(--t-accent-fg);
+  background: var(--t-err);
+}
+
+/* ------------------------------------------------------------------ badge */
+
+/* Estado = forma + texto, nunca só cor (a11y §4.5). */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--ds-unit) / 2);
+  font: 400 12px var(--fonte-mono);
+  color: var(--t-fg-muted);
+}
+
+.badge-quadrado {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  background: var(--t-fg-muted);
+}
+
+.badge.is-ok .badge-quadrado {
+  background: var(--t-ok);
+}
+
+.badge.is-warn .badge-quadrado {
+  background: var(--t-warn);
+}
+
+.badge.is-err .badge-quadrado {
+  background: var(--t-err);
+}
+
+/* ------------------------------------------------------------------ toast */
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-unit);
+  max-width: 360px;
+  padding: var(--ds-unit) calc(var(--ds-unit) * 2);
+  background: var(--t-bg-surface);
+  border: 1px solid var(--t-border);
+  border-radius: var(--ds-radius);
+  box-shadow: var(--ds-e1);
+}
+
+.toast.is-err {
+  border-color: var(--t-err);
+}
+
+.toast.is-ok {
+  border-color: var(--t-ok);
+}
+
+/* -------------------------------------------------------------- transcript */
+
+/* Janela de 6 linhas; o mais novo entra por baixo. */
+.transcript {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: calc(6 * 1.5em);
+  overflow: hidden;
+  font: 400 13px/1.5 var(--fonte-mono);
+}
+
+.transcript .parcial {
+  font-style: italic;
+  color: var(--t-fg-muted);
+}
+
+/* ------------------------------------------------------------------ touch */
+
+/* Alvos ≥ 44px em telas touch (a11y §4.3). */
+@media (pointer: coarse) {
+  .botao,
+  .hud .botao-fantasma {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .farol-resultado {
+    min-height: 44px;
+  }
+}
+
+/* Por último para vencer os display:flex acima com a mesma especificidade. */
+[hidden] {
+  display: none;
+}
+
+/* z0 (constelação): o Plano some, o Firmamento é a cena */
+#mundo.nivel-z0 {
+  visibility: hidden;
+}

@@ -5,6 +5,9 @@ import type {
   StartCaptionsCommand,
 } from "./protocol";
 
+const abrirLunaButton = document.getElementById(
+  "abrir-luna",
+) as HTMLButtonElement;
 const toggleButton = document.getElementById("toggle") as HTMLButtonElement;
 const pingButton = document.getElementById("ping") as HTMLButtonElement;
 const sourceSelect = document.getElementById("source") as HTMLSelectElement;
@@ -18,7 +21,7 @@ function renderToggle(): void {
     toggleButton.textContent = "Parar legendas";
     toggleButton.classList.add("stop");
   } else {
-    toggleButton.textContent = "Iniciar legendas";
+    toggleButton.textContent = "Legendar esta aba";
     toggleButton.classList.remove("stop");
   }
 }
@@ -91,6 +94,11 @@ async function stopCaptions(): Promise<void> {
   statusText.textContent = "Legendas paradas.";
   renderToggle();
 }
+
+abrirLunaButton.addEventListener("click", async () => {
+  await chrome.runtime.sendMessage({ cmd: "abrir-shell" });
+  window.close();
+});
 
 toggleButton.addEventListener("click", async () => {
   toggleButton.disabled = true;

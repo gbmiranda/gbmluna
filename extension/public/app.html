@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Luna — gbml</title>
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <!-- Céu vivo atrás de tudo (docs/twoddd.md, Firmamento) -->
+    <canvas id="firmamento"></canvas>
+    <!-- Plano: um único #mundo com translate3d+scale (compositor-only) -->
+    <div id="viewport"><div id="mundo"></div></div>
+    <div id="hud"></div>
+    <div id="farol-raiz"></div>
+    <div id="palco-raiz"></div>
+    <div id="toast-raiz"></div>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

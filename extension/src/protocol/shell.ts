@@ -41,4 +41,5 @@ export interface ShellStateSnapshot {
   translator: CaptureStatus;
 }
 
-export type BackgroundToShell = ShellAck | ShellModuleEvent | ShellStateSnapshot;
+export type BackgroundToShell =
+  ShellAck | ShellModuleEvent | ShellStateSnapshot;

@@ -11,6 +11,7 @@ await build({
     "src/popup.ts",
     "src/offscreen.ts",
     "src/content.ts",
+    "src/app.ts",
   ],
   bundle: true,
   format: "esm",

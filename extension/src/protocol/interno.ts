@@ -21,6 +21,10 @@ export interface GetStatusCommand {
   cmd: "get-status";
 }
 
+export interface AbrirShellCommand {
+  cmd: "abrir-shell";
+}
+
 // background → offscreen
 export interface OffscreenStartCommand {
   cmd: "offscreen-start";
@@ -69,6 +73,7 @@ export type InternalCommand =
   | StartCaptionsCommand
   | StopCaptionsCommand
   | GetStatusCommand
+  | AbrirShellCommand
   | OffscreenStartCommand
   | OffscreenStopCommand
   | AudioChunkCommand

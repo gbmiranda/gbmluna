@@ -11,8 +11,13 @@
     "offscreen",
     "scripting",
     "activeTab",
-    "storage"
+    "storage",
+    "tabs",
+    "topSites",
+    "favicon",
+    "contextMenus"
   ],
+  "optional_permissions": ["history"],
   "background": {
     "service_worker": "background.js",
     "type": "module"
