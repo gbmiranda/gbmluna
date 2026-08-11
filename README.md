@@ -1,4 +1,8 @@
-# gbmulti language (gbml)
+# gbmulti language (gbml) · projeto Luna
+
+> Para onde isto vai: [docs/visao.md](docs/visao.md) (hub multi-tools + nuvem) ·
+> [docs/twoddd.md](docs/twoddd.md) (Luna, o shell espacial) ·
+> [docs/design-system.md](docs/design-system.md) (identidade 8-bit lunar)
 
 Legendas traduzidas em tempo real para qualquer vídeo tocando numa aba do Chrome —
 **100% local**, sem nuvem, sem heurísticas: modelos neurais end-to-end rodando no
