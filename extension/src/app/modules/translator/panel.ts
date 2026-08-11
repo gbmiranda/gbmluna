@@ -5,6 +5,7 @@
 import type { Bridge } from "../../bridge";
 import { TRANSLATOR_MODULE } from "../../../protocol";
 import type { PingHostResult } from "../../../protocol";
+import { ehExtensao } from "../../previa";
 import { criarBadge, criarBotao } from "../../ui/components";
 import type { EstadoBadge, EstadoModulo } from "../../ui/components";
 
@@ -67,6 +68,14 @@ export function criarPainelTradutor(bridge: Bridge): PainelTradutor {
   }
 
   async function listarAbasAudiveis(listaEl: HTMLElement): Promise<void> {
+    if (!ehExtensao()) {
+      const dica = document.createElement("p");
+      dica.className = "painel-dica";
+      dica.textContent =
+        "Modo prévia: abra o Luna pela extensão para legendar.";
+      listaEl.append(dica);
+      return;
+    }
     const abas = await chrome.tabs.query({ audible: true });
     listaEl.textContent = "";
     if (abas.length === 0) {
@@ -105,15 +114,19 @@ export function criarPainelTradutor(bridge: Bridge): PainelTradutor {
 
     const host = document.createElement("span");
     host.className = "painel-host";
-    host.textContent = "host: verificando…";
+    if (ehExtensao()) {
+      host.textContent = "host: verificando…";
+      void chrome.runtime
+        .sendMessage({ cmd: "ping-host" })
+        .then((resultado: PingHostResult) => {
+          host.textContent = resultado.ok
+            ? `host v${resultado.hostVersion}`
+            : "host indisponível";
+        });
+    } else {
+      host.textContent = "modo prévia";
+    }
     topo.append(host);
-    void chrome.runtime
-      .sendMessage({ cmd: "ping-host" })
-      .then((resultado: PingHostResult) => {
-        host.textContent = resultado.ok
-          ? `host v${resultado.hostVersion}`
-          : "host indisponível";
-      });
 
     const abasEl = document.createElement("div");
     abasEl.className = "painel-abas";

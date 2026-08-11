@@ -1,6 +1,12 @@
 // Bootstrap do shell Luna: liga store → engine → ui → bridge (docs/twoddd.md).
 // Cada camada é cega para as outras; este arquivo é o único que as conhece.
 import { criarBridge } from "./bridge";
+import {
+  criarBridgeStub,
+  ehExtensao,
+  gerarItensSeed,
+  tamanhoSeed,
+} from "./previa";
 import { TRANSLATOR_MODULE } from "../protocol";
 import type { ClusterPlano, Lente, TilePlano } from "./tipos";
 import { DECK_RECT, TILE_MODULO, TILE_SITE } from "./tipos";
@@ -49,10 +55,12 @@ export async function iniciarShell(): Promise<void> {
   const toastEl = document.getElementById("toast-raiz") as HTMLElement;
 
   const toast = criarToast(toastEl);
-  const bridge = criarBridge();
+  const bridge = ehExtensao() ? criarBridge() : criarBridgeStub();
 
   // ---- dados: coleta → radar → clusters → posições determinísticas
-  const coletados = await coletar();
+  const coletados = ehExtensao()
+    ? await coletar()
+    : gerarItensSeed(tamanhoSeed());
   const agora = Date.now();
   const abasRecentes = coletados
     .filter((item) => item.aberto)
@@ -110,7 +118,7 @@ export async function iniciarShell(): Promise<void> {
           titulo: item.titulo,
           dominio: item.dominio,
           url: item.url,
-          favicon: faviconDe(item.url),
+          favicon: ehExtensao() ? faviconDe(item.url) : undefined,
           radar: radar.get(itemKey) ?? 0,
           clusterId: itemCluster.get(itemKey),
           ancorado: Boolean(ancora),
@@ -179,6 +187,8 @@ export async function iniciarShell(): Promise<void> {
       el = base.raiz;
     } else {
       el = criarCartao(tile, tile.favicon);
+      // clique seleciona (anel de foco), duplo clique/Enter mergulha
+      el.addEventListener("click", () => selecionar(tile.id));
       el.addEventListener("dblclick", () => mergulhar(tile.id));
       el.addEventListener("keydown", (evento) => {
         if (evento.key === "Enter") {
@@ -256,15 +266,21 @@ export async function iniciarShell(): Promise<void> {
     hud.atualizar(lente, palcoAberto ? "palco" : nivelAtual);
   });
 
+  function abrirUrlExterna(url: string): void {
+    if (ehExtensao()) {
+      void chrome.tabs.create({ url });
+    } else {
+      window.open(url, "_blank", "noopener");
+    }
+  }
+
   // ---- Palco
   const palco = criarPalco(palcoEl, {
     aoFechar: () => {
       palcoAberto = false;
       hud.atualizar(viewport.lente(), nivelAtual);
     },
-    aoAbrirEmAba: (url: string) => {
-      void chrome.tabs.create({ url });
-    },
+    aoAbrirEmAba: abrirUrlExterna,
     aoAncorar: (tileId: string) => {
       void ancorarTile(tileId);
     },
@@ -275,11 +291,17 @@ export async function iniciarShell(): Promise<void> {
     if (!tile || tile.tipo !== "site") {
       return;
     }
+    // Tile fora do viewport (ex.: via Farol) não tem elemento montado; o
+    // FLIP então parte de um retângulo no centro da tela.
     const el = montados.get(tileId);
-    const rect = el?.getBoundingClientRect();
-    if (!rect) {
-      return;
-    }
+    const rect =
+      el?.getBoundingClientRect() ??
+      new DOMRect(
+        viewportEl.clientWidth / 2 - tile.w / 2,
+        viewportEl.clientHeight / 2 - tile.h / 2,
+        tile.w,
+        tile.h,
+      );
     palcoAberto = true;
     palco.abrir(tile, rect);
     hud.atualizar(viewport.lente(), "palco");
@@ -308,21 +330,25 @@ export async function iniciarShell(): Promise<void> {
   }
 
   // ---- input
-  function subirNivel(): void {
-    if (palco.estaAberto()) {
-      palco.fechar();
-      return;
-    }
+  function boundsDeTudo(): { x: number; y: number; w: number; h: number } {
     const todos = [...tiles.values()];
     const minX = Math.min(...todos.map((tile) => tile.x));
     const minY = Math.min(...todos.map((tile) => tile.y));
     const maxX = Math.max(...todos.map((tile) => tile.x + tile.w));
     const maxY = Math.max(...todos.map((tile) => tile.y + tile.h));
+    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+  }
+
+  function subirNivel(): void {
+    if (palco.estaAberto()) {
+      palco.fechar();
+      return;
+    }
     void viewport.animarPara(
-      enquadrar(
-        { x: minX, y: minY, w: maxX - minX, h: maxY - minY },
-        { w: viewportEl.clientWidth, h: viewportEl.clientHeight },
-      ),
+      enquadrar(boundsDeTudo(), {
+        w: viewportEl.clientWidth,
+        h: viewportEl.clientHeight,
+      }),
       260,
     );
   }
@@ -330,7 +356,7 @@ export async function iniciarShell(): Promise<void> {
   function abrirEmAba(tileId: string): void {
     const tile = tiles.get(tileId);
     if (tile?.url) {
-      void chrome.tabs.create({ url: tile.url });
+      abrirUrlExterna(tile.url);
     }
   }
 
@@ -366,7 +392,7 @@ export async function iniciarShell(): Promise<void> {
         acao: () => mergulhar(tile.id),
         acaoAlternativa: () => {
           if (tile.url) {
-            void chrome.tabs.create({ url: tile.url });
+            abrirUrlExterna(tile.url);
           }
         },
       }));
@@ -426,5 +452,20 @@ export async function iniciarShell(): Promise<void> {
       peso: Math.max(0.2, ...cluster.itens.map((id) => radar.get(id) ?? 0)),
     })),
   );
-  irParaDeck();
+
+  // Primeira cena: o universo inteiro, com piso de zoom no z1 — cartões
+  // visíveis de cara; Esc afasta para a constelação, Cmd+0 leva ao Deck.
+  const bounds = boundsDeTudo();
+  const abertura = enquadrar(bounds, {
+    w: viewportEl.clientWidth,
+    h: viewportEl.clientHeight,
+  });
+  if (abertura.s < 0.26) {
+    const centroX = bounds.x + bounds.w / 2;
+    const centroY = bounds.y + bounds.h / 2;
+    abertura.s = 0.26;
+    abertura.x = centroX - viewportEl.clientWidth / (2 * abertura.s);
+    abertura.y = centroY - viewportEl.clientHeight / (2 * abertura.s);
+  }
+  viewport.definirLente(abertura);
 }

@@ -163,6 +163,7 @@ ul {
 /* --------------------------------------------------------- cartão de site */
 
 .cartao {
+  cursor: pointer;
   position: absolute;
   display: flex;
   flex-direction: column;
@@ -297,13 +298,18 @@ ul {
 .palco {
   position: fixed;
   inset: calc(var(--ds-unit) * 3);
-  display: flex;
+  /* nasce escondido; abrir() liga .is-aberto */
+  display: none;
   flex-direction: column;
   pointer-events: auto;
   background: var(--t-bg-raised);
   border: 1px solid var(--t-moon);
   border-radius: var(--ds-radius);
   box-shadow: var(--ds-e2);
+}
+
+.palco.is-aberto {
+  display: flex;
 }
 
 .palco-header {
@@ -627,4 +633,12 @@ ul {
 /* z0 (constelação): o Plano some, o Firmamento é a cena */
 #mundo.nivel-z0 {
   visibility: hidden;
+}
+
+/* o iframe preenche o quadro (default de iframe é 300x150) */
+.palco-quadro iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
 }
