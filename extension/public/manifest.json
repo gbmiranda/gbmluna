@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "gbmulti language",
+  "version": "0.1.0",
+  "description": "Legendas traduzidas em tempo real, 100% locais, aceleradas pelo Apple Silicon.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArpWgw39+1RjpqBNKdSvuYoI64wamce7PTNU91yrbaHIO0vwd6VE6380DGUTUbpmXYfGkyXQ71dfFzK2bOP5ZvYSbrNKvaDjHw9+NTcZEWItn/+yRmvHQgl+PLgREspeeCbAnR3erE5Ch2wjDYWLZCbgpmL3Mc0hiNxRB+JVsKgySMceXyr6bNvgWgh+h/dBo6hYPxHGTg/fOJCxpLlZTVzQllSFodMERxL67iOaAnaRo2nvnHQj3mTjqcjub8Y1p4Pqpz5utIE6RgxR3e/EByH6zqtZHX+g0MMvHbIGBA3/bq1WoDRYJ6IOQ6CkIltK7QABFc7Ha/knsS2wRJgrpHQIDAQAB",
+  "minimum_chrome_version": "120",
+  "permissions": [
+    "nativeMessaging",
+    "tabCapture",
+    "offscreen",
+    "scripting",
+    "activeTab",
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "gbmulti language"
+  }
+}
