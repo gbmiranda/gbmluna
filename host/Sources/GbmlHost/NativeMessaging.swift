@@ -8,6 +8,11 @@ enum NativeMessaging {
     private static let headerSize = 4
     private static let writeLock = NSLock()
 
+    // Modo envelope: ligado pela primeira mensagem com "module" (decisão por
+    // conexão; o processo vive uma conexão só). nonisolated(unsafe): escrito
+    // apenas na thread do reader, antes de qualquer resposta da sessão.
+    nonisolated(unsafe) static var envelopeMode = false
+
     static func readMessage() -> [String: Any]? {
         guard let header = readExactly(headerSize) else {
             return nil
@@ -18,6 +23,16 @@ enum NativeMessaging {
         }
         let object = try? JSONSerialization.jsonObject(with: payload)
         return object as? [String: Any]
+    }
+
+    /// Saída de um módulo: em modo envelope o campo "module" vai junto; em
+    /// modo flat a mensagem sai como no contrato original.
+    static func send(module: String, _ message: [String: Any]) {
+        var payload = message
+        if envelopeMode {
+            payload["module"] = module
+        }
+        send(payload)
     }
 
     static func send(_ message: [String: Any]) {

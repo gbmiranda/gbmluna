@@ -58,7 +58,10 @@ final class CaptureSession: @unchecked Sendable {
                 let transcriber = try await Transcriber.make(
                     locale: Locale(identifier: effectiveSource),
                     onStatus: { message in
-                        NativeMessaging.send(["type": "status", "message": message])
+                        NativeMessaging.send(
+                            module: TranslatorModule.moduleName,
+                            ["type": "status", "message": message]
+                        )
                     },
                     onResult: { [weak self] result in
                         self?.handleTranscription(result)
@@ -120,7 +123,10 @@ final class CaptureSession: @unchecked Sendable {
         if result.isFinal {
             finalsBuilder.yield(result.text)
         } else {
-            NativeMessaging.send(["type": "partial", "text": result.text])
+            NativeMessaging.send(
+                module: TranslatorModule.moduleName,
+                ["type": "partial", "text": result.text]
+            )
         }
     }
 
@@ -137,7 +143,7 @@ final class CaptureSession: @unchecked Sendable {
                         NativeMessaging.log("tradução falhou: \(error)")
                     }
                 }
-                NativeMessaging.send(payload)
+                NativeMessaging.send(module: TranslatorModule.moduleName, payload)
             }
         }
     }
@@ -161,7 +167,7 @@ final class CaptureSession: @unchecked Sendable {
                 needsDownload: false
             )
         case .supported:
-            NativeMessaging.send([
+            NativeMessaging.send(module: TranslatorModule.moduleName, [
                 "type": "status",
                 "message": "Baixando o par de tradução \(source) → \(targetLanguage)…",
             ])
@@ -171,7 +177,7 @@ final class CaptureSession: @unchecked Sendable {
                 needsDownload: true
             )
         case .unsupported:
-            NativeMessaging.send([
+            NativeMessaging.send(module: TranslatorModule.moduleName, [
                 "type": "status",
                 "message": "Tradução \(source) → \(targetLanguage) não suportada; legendas sem tradução.",
             ])

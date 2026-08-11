@@ -4,8 +4,10 @@
 // Sem argumentos: ping/pong + start → 1s de seno 440 Hz → stop (valida o contrato).
 // Com --wav <arquivo>: envia um WAV (PCM s16le mono 16 kHz) e exige pelo menos
 // uma transcrição final não vazia — valida o SpeechAnalyzer de ponta a ponta.
+// Com --envelope: roda o mesmo roteiro no formato de envelope {module, type}
+// e exige respostas envelopadas com eco de requestId (docs/twoddd.md).
 //
-// Uso: node scripts/host-smoke.mjs [--wav caminho.wav] [caminho-do-binario]
+// Uso: node scripts/host-smoke.mjs [--wav caminho.wav] [--envelope] [caminho-do-binario]
 import { spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -22,6 +24,7 @@ const args = process.argv.slice(2)
 let wavPath = null
 let targetLanguage = 'pt-BR'
 let binary = DEFAULT_BIN
+let envelope = false
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--wav') {
     wavPath = args[i + 1]
@@ -29,9 +32,19 @@ for (let i = 0; i < args.length; i++) {
   } else if (args[i] === '--target') {
     targetLanguage = args[i + 1]
     i++
+  } else if (args[i] === '--envelope') {
+    envelope = true
   } else {
     binary = args[i]
   }
+}
+
+// No modo envelope toda mensagem sai com o módulo dono do contrato.
+function mod(moduleName, message) {
+  if (!envelope) {
+    return message
+  }
+  return { module: moduleName, ...message }
 }
 
 function frame(message) {
@@ -106,10 +119,10 @@ let chunkCount = 0
 function streamAudioAndStop() {
   for (let offset = 0; offset < pcm.length; offset += CHUNK_BYTES) {
     const chunk = pcm.subarray(offset, offset + CHUNK_BYTES)
-    host.stdin.write(frame({ type: 'audio', pcm: chunk.toString('base64') }))
+    host.stdin.write(frame(mod('translator', { type: 'audio', pcm: chunk.toString('base64') })))
     chunkCount++
   }
-  host.stdin.write(frame({ type: 'stop' }))
+  host.stdin.write(frame(mod('translator', { type: 'stop', requestId: 'smoke-stop' })))
   host.stdin.end()
 }
 
@@ -123,8 +136,10 @@ host.stdout.on('data', (chunk) => {
   })
 })
 
-host.stdin.write(frame({ type: 'ping' }))
-host.stdin.write(frame({ type: 'start', sourceLanguage: 'en-US', targetLanguage }))
+host.stdin.write(frame(mod('core', { type: 'ping', requestId: 'smoke-ping' })))
+host.stdin.write(
+  frame(mod('translator', { type: 'start', requestId: 'smoke-start', sourceLanguage: 'en-US', targetLanguage })),
+)
 
 host.on('close', (code) => {
   const failures = []
@@ -134,6 +149,29 @@ host.on('close', (code) => {
   }
   if (!received.some((message) => message.type === 'started')) {
     failures.push('start não confirmado')
+  }
+
+  if (envelope) {
+    for (const message of received.filter((item) => typeof item.module !== 'string')) {
+      failures.push(`resposta sem module no modo envelope: ${JSON.stringify(message)}`)
+    }
+    const pong = received.find((message) => message.type === 'pong')
+    if (pong) {
+      if (pong.module !== 'core' || pong.requestId !== 'smoke-ping') {
+        failures.push(`pong de core inválido: ${JSON.stringify(pong)}`)
+      }
+      if (!Array.isArray(pong.modules) || !pong.modules.includes('translator')) {
+        failures.push(`pong sem lista de módulos com translator: ${JSON.stringify(pong)}`)
+      }
+    }
+    const started = received.find((message) => message.type === 'started')
+    if (started && (started.module !== 'translator' || started.requestId !== 'smoke-start')) {
+      failures.push(`started sem envelope/eco de requestId: ${JSON.stringify(started)}`)
+    }
+    const stoppedEnvelope = received.find((message) => message.type === 'stopped')
+    if (stoppedEnvelope && stoppedEnvelope.requestId !== 'smoke-stop') {
+      failures.push(`stopped sem eco de requestId: ${JSON.stringify(stoppedEnvelope)}`)
+    }
   }
 
   const stopped = received.find((message) => message.type === 'stopped')
