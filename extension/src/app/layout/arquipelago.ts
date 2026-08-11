@@ -9,8 +9,8 @@ export interface ClusterLayout {
   lugarId?: string;
 }
 
-export const FOLGA_CLUSTER = 240; // wu de respiro entre clusters
-const RAIO_ESPIRAL = 900; // wu
+export const FOLGA_CLUSTER = 100; // wu de respiro entre clusters
+const RAIO_ESPIRAL = 620; // wu
 const ITERACOES = 300;
 const GRAVIDADE = 0.01;
 const MOLA_LUGAR = 0.2;

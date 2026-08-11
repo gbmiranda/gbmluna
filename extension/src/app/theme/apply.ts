@@ -1,10 +1,10 @@
-// Aplicação e persistência de tema (docs/design-system.md §2.1 e §4.6):
-// prefers-color-scheme escolhe o tema inicial; a escolha manual persiste em
-// chrome.storage.local e ganha do sistema nas próximas aberturas.
+// Aplicação e persistência de tema (docs/design-system.md §2.1):
+// Meia-noite é o padrão — a identidade do Luna é o céu noturno; a escolha
+// manual persiste em chrome.storage.local e ganha do padrão nas próximas.
 
 import type { TemaDef } from "./tokens";
 import { TOKENS_TEMA } from "./tokens";
-import { MEIA_NOITE, PAPEL, temaPorId } from "./themes";
+import { MEIA_NOITE, temaPorId } from "./themes";
 
 const CHAVE_TEMA = "temaId";
 
@@ -28,12 +28,11 @@ export async function temaInicial(): Promise<TemaDef> {
       if (tema) return tema;
     }
   } catch {
-    // Sem chrome.storage (página aberta fora da extensão) — cai no sistema.
+    // Sem chrome.storage (página aberta fora da extensão) — cai no padrão.
   }
-  const prefereClaro = window.matchMedia(
-    "(prefers-color-scheme: light)",
-  ).matches;
-  return prefereClaro ? PAPEL : MEIA_NOITE;
+  // A identidade do Luna é o céu noturno: Meia-noite é o padrão sempre;
+  // Papel é escolha manual (persistida), não herança do sistema.
+  return MEIA_NOITE;
 }
 
 export async function salvarTema(id: string): Promise<void> {

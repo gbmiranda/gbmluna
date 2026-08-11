@@ -87,7 +87,7 @@ export async function iniciarShell(): Promise<void> {
     // Arquipélago posiciona os centroides; Girassol os itens; âncoras vencem.
     const raios = clusters.map((cluster) => ({
       id: cluster.id,
-      raio: 380 * Math.sqrt(Math.max(1, cluster.itens.length)) + 200,
+      raio: 380 * Math.sqrt(Math.max(1, cluster.itens.length)) + 80,
     }));
     const centros = posicionarArquipelago(raios, [
       { id: "deck", nome: "Deck", rect: DECK_RECT, fixo: true },
@@ -118,7 +118,11 @@ export async function iniciarShell(): Promise<void> {
           titulo: item.titulo,
           dominio: item.dominio,
           url: item.url,
-          favicon: ehExtensao() ? faviconDe(item.url) : undefined,
+          // prévia (fora da extensão): favicon público do domínio, só para
+          // a página de dev — a extensão usa a API _favicon local
+          favicon: ehExtensao()
+            ? faviconDe(item.url)
+            : `https://www.google.com/s2/favicons?domain=${item.dominio}&sz=64`,
           radar: radar.get(itemKey) ?? 0,
           clusterId: itemCluster.get(itemKey),
           ancorado: Boolean(ancora),
@@ -166,6 +170,20 @@ export async function iniciarShell(): Promise<void> {
   const indice = criarIndiceEspacial();
   for (const tile of tiles.values()) {
     indice.inserir(tile.id, { x: tile.x, y: tile.y, w: tile.w, h: tile.h });
+  }
+
+  // Rótulos de território: o nome de cada cluster vive no Plano, acima do
+  // seu girassol — são poucos (≤ 24), ficam montados sempre.
+  for (const cluster of clusters) {
+    const rotulo = document.createElement("div");
+    rotulo.className = "cluster-rotulo";
+    rotulo.textContent = cluster.rotulo;
+    rotulo.style.left = `${cluster.x}px`;
+    rotulo.style.top = `${
+      cluster.y - (380 * Math.sqrt(Math.max(1, cluster.itens.length)) + 150)
+    }px`;
+    rotulo.style.color = `var(--t-hue-${cluster.matiz})`;
+    mundoEl.append(rotulo);
   }
 
   const painelTradutor = criarPainelTradutor(bridge);
@@ -263,6 +281,8 @@ export async function iniciarShell(): Promise<void> {
       firmamento.modoNivel(nivel);
       mundoEl.classList.toggle("nivel-z0", nivel === "z0");
     }
+    // banda "longe": cartão simplifica para sprite legível (favicon + título)
+    mundoEl.classList.toggle("longe", lente.s < 0.55);
     hud.atualizar(lente, palcoAberto ? "palco" : nivelAtual);
   });
 
@@ -460,10 +480,10 @@ export async function iniciarShell(): Promise<void> {
     w: viewportEl.clientWidth,
     h: viewportEl.clientHeight,
   });
-  if (abertura.s < 0.26) {
+  if (abertura.s < 0.5) {
     const centroX = bounds.x + bounds.w / 2;
     const centroY = bounds.y + bounds.h / 2;
-    abertura.s = 0.26;
+    abertura.s = 0.5;
     abertura.x = centroX - viewportEl.clientWidth / (2 * abertura.s);
     abertura.y = centroY - viewportEl.clientHeight / (2 * abertura.s);
   }

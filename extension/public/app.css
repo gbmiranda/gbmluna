@@ -642,3 +642,67 @@ ul {
   height: 100%;
   border: 0;
 }
+
+/* ---- rótulos de território (nome do cluster no Plano) */
+.cluster-rotulo {
+  position: absolute;
+  transform: translateX(-50%);
+  font-family: ui-monospace, "SF Mono", monospace;
+  font-size: 44px;
+  font-weight: 600;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* ---- cartão mais denso no nível de leitura */
+.cartao-titulo {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.cartao-dominio {
+  margin-top: auto;
+}
+
+/* ---- banda "longe" (s < 0.55): cartão vira sprite chunky e legível */
+#mundo.longe .cartao {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: calc(var(--ds-unit) * 2);
+  border-width: 2px;
+}
+
+#mundo.longe .cartao-cabeca {
+  justify-content: center;
+}
+
+#mundo.longe img.cartao-favicon,
+#mundo.longe .cartao-favicon svg {
+  width: 56px;
+  height: 56px;
+}
+
+#mundo.longe .cartao-titulo {
+  font-size: 26px;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+#mundo.longe .cartao-dominio {
+  display: none;
+}
+
+#mundo.longe .cartao-ancora {
+  position: absolute;
+  top: var(--ds-unit);
+  right: var(--ds-unit);
+}

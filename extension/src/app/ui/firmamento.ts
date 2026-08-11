@@ -196,7 +196,7 @@ export function criarFirmamento(canvas: HTMLCanvasElement): Firmamento {
       agendarDesenho();
     },
     modoNivel(nivel) {
-      fatorNivel = nivel === "z1" ? 0.4 : 1;
+      fatorNivel = nivel === "z1" ? 0.7 : 1;
       agendarDesenho();
     },
     releTema,
